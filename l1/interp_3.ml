@@ -28,6 +28,7 @@ type location = label * (address option)
 
 type value = 
   | INT of int 
+  | BOOL of bool
 
 and instruction = 
   | PUSH of value 
@@ -146,6 +147,7 @@ let do_oper = function
   | (SUB,  INT m,   INT n)  -> INT (m - n)
   | (MUL,  INT m,   INT n)  -> INT (m * n)
   | (DIV,  INT m,   INT n)  -> INT (m / n)
+  | (GTEQ, INT m,   INT n)  -> BOOL (m >= n)
   | (op, _, _)  -> complain ("malformed binary operator: " ^ (string_of_oper op))
 
 
@@ -159,6 +161,8 @@ let step (cp, evs) =
  | (LABEL l,                           evs) -> (cp + 1, evs) 
  | (HALT,                              evs) -> (cp, evs) 
  | (GOTO (_, Some i),                  evs) -> (i, evs) 
+ | (TEST (_, Some _),  V(BOOL true) :: evs) -> (cp + 1, evs)
+ | (TEST (_, Some i), V(BOOL false) :: evs) -> (i,      evs)
  | _ -> complain ("step : bad state = " ^ (string_of_state (cp, evs)) ^ "\n")
 
 (* COMPILE *) 
@@ -179,6 +183,19 @@ let rec comp = function
  | Seq (e ::rest) -> let (defs1, c1) = comp e in  
                      let (defs2, c2) = comp (Seq rest) in  
                        (defs1 @ defs2, c1 @ [POP] @ c2)
+ | If(e1, e2, e3) -> let else_label = new_label () in 
+                     let after_else_label = new_label () in
+                     let (defs1, c1) = comp e1 in 
+                     let (defs2, c2) = comp e2 in 
+                     let (defs3, c3) = comp e3 in 
+                     (defs1 @ defs2 @ defs3, 
+                      (c1 @ [TEST(else_label, None)]
+                       @ c2  
+                       @ [GOTO(after_else_label, None); LABEL(else_label)]
+                       @ c3 
+                       @ [LABEL(after_else_label)])
+                      )
+
 let compile e = 
     let (defs, c) = comp e in 
     let result = c @               (* body of program *) 

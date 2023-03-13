@@ -32,6 +32,7 @@ let pp_bop = function
   | MUL  -> "*" 
   | DIV  -> "/" 
   | SUB -> "-" 
+  | GTEQ -> ">="
 
 
 let string_of_oper = pp_bop 
@@ -74,6 +75,7 @@ let string_of_bop = function
   | MUL  -> "MUL" 
   | DIV  -> "DIV" 
   | SUB -> "SUB" 
+  | GTEQ -> "GTEQ"
 
 let mk_con con l = 
     let rec aux carry = function 
